@@ -16,7 +16,7 @@ import { DeterministicDeployer, HttpRpcClient, SimpleAccountAPI } from '@account
 import { runBundler } from '../runBundler'
 import { BundlerServer } from '../BundlerServer'
 
-const ENTRY_POINT = '0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789'
+const ENTRY_POINT = '0x0576a174D229E3cFA37253523E645A78A0C91B57'
 
 class Runner {
   bundlerProvider!: HttpRpcClient
@@ -47,7 +47,8 @@ class Runner {
     const net = await this.provider.getNetwork()
     const chainId = net.chainId
     const dep = new DeterministicDeployer(this.provider)
-    const accountDeployer = await DeterministicDeployer.getAddress(new SimpleAccountFactory__factory(), 0, [this.entryPointAddress])
+    // const accountDeployer = await DeterministicDeployer.getAddress(new SimpleAccountFactory__factory(), 0, [this.entryPointAddress])
+    const accountDeployer = '0x7d923d8D46d51Ca1E0691F797b5E4228C31c2152'; // SimpleFactory address taken from deployment code
     // const accountDeployer = await new SimpleAccountFactory__factory(this.provider.getSigner()).deploy().then(d=>d.address)
     if (!await dep.isContractDeployed(accountDeployer)) {
       if (deploymentSigner == null) {
@@ -129,7 +130,7 @@ async function main (): Promise<void> {
       })
     }
 
-    const argv = ['node', 'exec', '--config', './localconfig/bundler.config.json', '--unsafe', '--auto']
+    const argv = ['node', 'exec', '--config', './localconfig/bundler.config.json', '--unsafe']
     if (opts.entryPoint != null) {
       argv.push('--entryPoint', opts.entryPoint)
     }
@@ -155,10 +156,10 @@ async function main (): Promise<void> {
   const accountOwner = new Wallet('0x'.padEnd(66, '7'))
 
   const index = opts.nonce ?? Date.now()
-  console.log('using account index=', index)
   const client = await new Runner(provider, opts.bundlerUrl, accountOwner, opts.entryPoint, index).init(deployFactory ? signer : undefined)
 
   const addr = await client.getAddress()
+  // const addr = '0x2F9167B44e278b42e9Bc2C4a07c799A958a1B768'; // account address hardcoded from stackup code
 
   async function isDeployed (addr: string): Promise<boolean> {
     return await provider.getCode(addr).then(code => code !== '0x')
@@ -170,21 +171,21 @@ async function main (): Promise<void> {
 
   const bal = await getBalance(addr)
   console.log('account address', addr, 'deployed=', await isDeployed(addr), 'bal=', formatEther(bal))
-  const gasPrice = await provider.getGasPrice()
   // TODO: actual required val
-  const requiredBalance = gasPrice.mul(2e6)
+  const requiredBalance = parseEther('10000000')
   if (bal.lt(requiredBalance.div(2))) {
-    console.log('funding account to', requiredBalance.toString())
+    console.log('funding account to', requiredBalance)
     await signer.sendTransaction({
       to: addr,
       value: requiredBalance.sub(bal)
-    }).then(async tx => await tx.wait())
+    })
   } else {
     console.log('not funding account. balance is enough')
   }
 
   const dest = addr
-  const data = keccak256(Buffer.from('entryPoint()')).slice(0, 10)
+  // const data = keccak256(Buffer.from('nonce()')).slice(0, 10)
+  const data = keccak256(Buffer.from('test()')).slice(0, 10)
   console.log('data=', data)
   await client.runUserOp(dest, data)
   console.log('after run1')
@@ -195,5 +196,3 @@ async function main (): Promise<void> {
 }
 
 void main()
-  .catch(e => { console.log(e); process.exit(1) })
-  .then(() => process.exit(0))
