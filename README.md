@@ -1,5 +1,32 @@
 # EIP4337 reference modules
 
+
+## Vechain Steps
+
+1. Start thor in solo mode and the [Remix Proxy](https://github.com/vechainfoundation/remix-proxy)
+2. Deploy the EntryPoint and SimpleAccountFactory using the [provided repo](https://github.com/MakisChristou/account-abstraction)
+3. Use Sync to fund the Bundler address when prompted
+4. Change the `accountDepoloyer` contract address to your `SimpleAccountFactory` 
+5. Start the bundler and the `runOp` script using the steps below:
+
+
+```bash
+yarn && yarn preprocess
+```
+
+In one temrinal run the bundler
+
+```bash
+yarn run bundler --unsafe
+```
+
+In another terminal run the `runOp` script.
+
+```bash
+ yarn run runop  --network http://localhost:8545/ --entryPoint <Your-EntryPoint-Address>  --bundlerUrl http://localhost:4337/rp
+```
+
+
 ## Bundler
 
 A basic eip4337 "bundler"
