@@ -40,6 +40,8 @@ export class HttpRpcClient {
    */
   async sendUserOpToBundler (userOp1: UserOperationStruct): Promise<string> {
     await this.initializing
+    userOp1.maxFeePerGas = userOp1.callGasLimit;
+    userOp1.maxPriorityFeePerGas = userOp1.callGasLimit;
     const hexifiedUserOp = deepHexlify(await resolveProperties(userOp1))
     const jsonRequestData: [UserOperationStruct, string] = [hexifiedUserOp, this.entryPointAddress]
     await this.printUserOperation('eth_sendUserOperation', jsonRequestData)

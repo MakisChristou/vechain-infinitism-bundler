@@ -4,6 +4,12 @@ import { TransactionRequest } from '@ethersproject/abstract-provider'
 import { JsonRpcProvider, JsonRpcSigner } from '@ethersproject/providers'
 import { Signer } from '@ethersproject/abstract-signer'
 
+import { ethers } from "ethers";
+import { Framework } from '@vechain/connex-framework'
+import { SimpleNet, SimpleWallet, Driver} from '@vechain/connex-driver'
+import * as thor from '@vechain/web3-providers-connex'
+import Web3 from 'web3'
+
 /**
  * wrapper class for Arachnid's deterministic deployer
  * (deterministic deployer used by 'hardhat-deployer'. generates the same addresses as "hardhat-deploy")
@@ -58,17 +64,38 @@ export class DeterministicDeployer {
     if (await this.isContractDeployed(DeterministicDeployer.proxyAddress)) {
       return
     }
+
+    const net = new SimpleNet("http://127.0.0.1:8669")
+    const driver = await Driver.connect(net)
+    const connexObj = new Framework(driver)
+    
+    const vechainProviderEthers = thor.ethers.modifyProvider(
+      new ethers.providers.Web3Provider(
+        new thor.Provider({ 
+          connex: connexObj,
+          net: net
+        })
+      )
+    )
+
+
     const bal = await this.provider.getBalance(DeterministicDeployer.deploymentSignerAddress)
     const neededBalance = BigNumber.from(DeterministicDeployer.deploymentGasLimit).mul(DeterministicDeployer.deploymentGasPrice)
     if (bal.lt(neededBalance)) {
-      const signer = this.signer ?? this.provider.getSigner()
+      // const signer = this.signer ?? this.provider.getSigner()
+
+      const signer = vechainProviderEthers.getSigner()
+
       await signer.sendTransaction({
         to: DeterministicDeployer.deploymentSignerAddress,
         value: neededBalance,
         gasLimit: DeterministicDeployer.deploymentGasLimit
       })
     }
-    await this.provider.send('eth_sendRawTransaction', [DeterministicDeployer.deploymentTransaction])
+
+    await vechainProviderEthers.send('eth_sendRawTransaction', [DeterministicDeployer.deploymentTransaction])
+
+    // await this.provider.send('eth_sendRawTransaction', [DeterministicDeployer.deploymentTransaction])
     if (!await this.isContractDeployed(DeterministicDeployer.proxyAddress)) {
       throw new Error('raw TX didn\'t deploy deployer!')
     }

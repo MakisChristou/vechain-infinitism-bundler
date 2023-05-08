@@ -126,6 +126,8 @@ export abstract class BaseAccountAPI {
     try {
       await this.entryPointView.callStatic.getSenderAddress(initCode)
     } catch (e: any) {
+      const res = JSON.parse(e.error.body);
+      return '0x' + res.error.data.substring(34);
       return e.errorArgs.sender
     }
     throw new Error('must handle revert')

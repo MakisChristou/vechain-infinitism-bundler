@@ -1,9 +1,9 @@
 {
   "gasFactor": "1",
-  "port": "3000",
+  "port": "4337",
   "network": "http://localhost:8545",
-  "entryPoint": "0x0576a174D229E3cFA37253523E645A78A0C91B57",
-  "beneficiary": "0xd21934eD8eAf27a67f0A70042Af50A1D6d195E81",
+  "entryPoint": "0x714Fd36eD97b6D66A997592B6B87443D4F63436e",
+  "beneficiary": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
   "minBalance": "1",
   "mnemonic": "./localconfig/mnemonic.txt",
   "maxBundleGas": 5e6,

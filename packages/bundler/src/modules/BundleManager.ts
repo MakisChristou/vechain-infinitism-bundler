@@ -1,8 +1,7 @@
 import { EntryPoint } from '@account-abstraction/contracts'
 import { MempoolManager } from './MempoolManager'
 import { ValidateUserOpResult, ValidationManager } from './ValidationManager'
-import { BigNumber, BigNumberish } from 'ethers'
-import { JsonRpcProvider, JsonRpcSigner } from '@ethersproject/providers'
+
 import Debug from 'debug'
 import { ReputationManager, ReputationStatus } from './ReputationManager'
 import { Mutex } from 'async-mutex'
@@ -11,6 +10,18 @@ import { StorageMap, UserOperation } from './Types'
 import { getAddr, mergeStorageMap, runContractScript } from './moduleUtils'
 import { EventsManager } from './EventsManager'
 import { ErrorDescription } from '@ethersproject/abi/lib/interface'
+import { HDNode, Transaction, secp256k1, mnemonic } from "thor-devkit";
+
+// Vechain Provider Imports
+import { ethers } from "ethers";
+import { Framework } from '@vechain/connex-framework'
+import { SimpleNet, SimpleWallet, Driver} from '@vechain/connex-driver'
+import * as thor from '@vechain/web3-providers-connex'
+
+import { BigNumber, BigNumberish, Wallet, utils} from 'ethers'
+import { JsonRpcProvider, JsonRpcSigner } from '@ethersproject/providers'
+import { getUserOpHash } from '@account-abstraction/utils'
+import { util } from 'chai'
 
 const debug = Debug('aa.exec.cron')
 
@@ -70,6 +81,7 @@ export class BundleManager {
     await this.eventsManager.handlePastEvents()
   }
 
+
   /**
    * submit a bundle.
    * after submitting the bundle, remove all UserOps from the mempool
@@ -86,7 +98,91 @@ export class BundleManager {
         maxFeePerGas: feeData.maxFeePerGas ?? 0
       })
       tx.chainId = this.provider._network.chainId
-      const signedTx = await this.signer.signTransaction(tx)
+
+      console.log("tx.chainId = ", tx.chainId)
+
+      // Vechain Signature
+      const net = new SimpleNet("http://127.0.0.1:8669")
+
+      // const getWalletForIndex = (index: any) => {
+      //   return Wallet.fromMnemonic(
+      //     'test test test test test test test test test test test junk',
+      //     `m/44'/60'/0'/0/${index}`
+      //   );
+      // };
+
+      const wallet = new SimpleWallet()
+      wallet.import("0x99f0500549792796c14fed62011a51081dc5b5e68fe8bd8a13b86be829c4fd36")
+      wallet.import("0x7b067f53d350f1cf20ec13df416b7b73e88a1dc7331bc904b92108b1e76a08b1")
+
+      const driver = await Driver.connect(net, wallet)
+      const connexObj = new Framework(driver)
+
+      const inner_provider = new thor.Provider({
+        wallet: wallet,
+        connex: connexObj,
+        net: net
+      })
+
+      const vechainProviderEthers = thor.ethers.modifyProvider(
+        new ethers.providers.Web3Provider(
+          inner_provider
+        )
+      )
+
+      // const new_signer = this.provider.getSigner()
+
+      const tx1 : thor.types.TxObj = {
+        to: tx.to,
+        from: tx.from,
+        value: tx.value?.toString(),
+        data: tx.data,
+        gas: tx.gasLimit?.toString(),
+    };
+
+    const tx2 = {
+      clauses: [{
+        to: tx.to,
+        data: tx.data,
+        value: tx.value
+    }],
+      caller: tx.from,
+      gas: tx.gasLimit,
+      gasPrice: tx.gasPrice?.toString(),
+    };
+          
+      const signedTx = await thor.utils.signTransaction(tx1, wallet.list[0], inner_provider)
+
+      let txId = await inner_provider.request({method: 'eth_sendRawTransaction', params: [signedTx]})
+
+      const _hashes = [this.getUserOpHashesLocal(userOps)]
+
+      return {
+        transactionHash: txId,
+        userOpHashes: _hashes
+      }
+
+      // try {
+      //     const res = await inner_provider.request({ 
+      //       method: 'eth_call', 
+      //       params: [tx2] 
+      //   })
+      //     console.log("res: ", res);
+      // }
+      // catch(e) {
+      //   console.log(e)
+      // }
+
+
+      // this.signer = vechainProviderEthers.getSigner("0xf077b491b355E64048cE21E3A6Fc4751eEeA77fa")
+      // this.provider = vechainProviderEthers
+      // await vechainProviderEthers.sendTransaction(tx.toString())
+      // const value = await vechainProviderEthers.send('eth_sendTransaction', [tx]);
+      // console.log("tx: ", tx)
+
+      // const signedTx = await this.signer.signTransaction(tx)
+      // console.log("signed tx: ", signedTx)
+
       let ret: string
       if (this.conditionalRpc) {
         debug('eth_sendRawTransactionConditional', storageMap)
@@ -96,14 +192,30 @@ export class BundleManager {
         debug('eth_sendRawTransactionConditional ret=', ret)
       } else {
         // ret = await this.signer.sendTransaction(tx)
-        ret = await this.provider.send('eth_sendRawTransaction', [signedTx])
-        debug('eth_sendRawTransaction ret=', ret)
+        // ret = await this.provider.send('eth_sendRawTransaction', [signedTx])
+        // debug('eth_sendRawTransaction ret=', ret)
+        // ret = await inner_provider.request({ method: 'eth_sendTransaction', params: [tx2]})
+        // console.log('eth_sendTransaction ret=', ret)
+        // debug('eth_sendTransaction ret=', ret)
+
+        ret = '0x'
+
+        try {
+          const errorResult = await this.entryPoint.callStatic.handleOps(userOps, beneficiary, {gasLimit: 1000000});
+        
+        } catch(e: any) {
+          // decodeRevertReason(e.data);
+          console.log(e);
+        }
       }
       // TODO: parse ret, and revert if needed.
       debug('ret=', ret)
       debug('sent handleOps with', userOps.length, 'ops. removing from mempool')
       // hashes are needed for debug rpc only.
-      const hashes = await this.getUserOpHashes(userOps)
+      // const hashes = await this.getUserOpHashes(userOps) // revert here
+
+      const hashes = [this.getUserOpHashesLocal(userOps)]
+
       return {
         transactionHash: ret,
         userOpHashes: hashes
@@ -184,6 +296,7 @@ export class BundleManager {
       try {
         // re-validate UserOp. no need to check stake, since it cannot be reduced between first and 2nd validation
         validationResult = await this.validationManager.validateUserOp(entry.userOp, entry.referencedContracts, false)
+        console.log(validationResult)
       } catch (e: any) {
         debug('failed 2nd validation:', e.message)
         // failed validation. don't try anymore
@@ -252,4 +365,31 @@ export class BundleManager {
 
     return userOpHashes
   }
+
+  getUserOpHashesLocal (userOps: UserOperation[]): string {
+    const userOp1: UserOperation = userOps[0];
+
+    const userOperationAbiDefinition = "tuple(address sender, uint256 nonce, bytes initCode, bytes callData, uint256 callGasLimit, uint256 verificationGasLimit, uint256 preVerificationGas, uint256 maxFeePerGas, uint256 maxPriorityFeePerGas, bytes paymasterAndData, bytes signature)";
+
+    const userOp1Hash = utils.keccak256(utils.defaultAbiCoder.encode([userOperationAbiDefinition],[userOp1]))
+
+    const hash = utils.keccak256(
+      utils.defaultAbiCoder.encode(
+          [
+              "bytes32",
+              "address",
+              "uint256"
+          ],
+          [
+              userOp1Hash,
+              this.entryPoint.address,
+              246,
+          ]
+      )
+  );
+  return hash;
+
+  }
+
 }
+

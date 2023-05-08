@@ -53,31 +53,91 @@ export class ValidationManager {
     return this._parseErrorResult(userOp, errorResult)
   }
 
-  _parseErrorResult (userOp: UserOperation, errorResult: { errorName: string, errorArgs: any }): ValidationResult {
-    if (!errorResult?.errorName?.startsWith('ValidationResult')) {
-      // parse it as FailedOp
-      // if its FailedOp, then we have the paymaster param... otherwise its an Error(string)
-      let paymaster = errorResult.errorArgs.paymaster
-      if (paymaster === AddressZero) {
-        paymaster = undefined
-      }
-      // eslint-disable-next-line
-      const msg: string = errorResult.errorArgs?.reason ?? errorResult.toString()
+  _parseErrorResult (userOp: UserOperation, errorResult: any): ValidationResult {
 
-      if (paymaster == null) {
-        throw new RpcError(`account validation failed: ${msg}`, ValidationErrors.SimulateValidation)
-      } else {
-        throw new RpcError(`paymaster validation failed: ${msg}`, ValidationErrors.SimulatePaymasterValidation, { paymaster })
-      }
+    // console.log(JSON.stringify(errorResult))
+
+    // if (!errorResult?.errorName?.startsWith('ValidationResult')) {
+    //   // parse it as FailedOp
+    //   // if its FailedOp, then we have the paymaster param... otherwise its an Error(string)
+    //   // const data = errorResult.error.error.data
+      
+    //   let paymaster = errorResult.errorArgs.paymaster
+    //   if (paymaster === AddressZero) {
+    //     paymaster = undefined
+    //   }
+    //   // eslint-disable-next-line
+    //   const msg: string = errorResult.errorArgs?.reason ?? errorResult.toString()
+    //   if (paymaster == null) {
+    //     throw new RpcError(`account validation failed: ${msg}`, ValidationErrors.SimulateValidation)
+    //   } else {
+    //     throw new RpcError(`paymaster validation failed: ${msg}`, ValidationErrors.SimulatePaymasterValidation, { paymaster })
+    //   }
+    // }
+    
+    let returnInfo;
+    let senderInfo;
+    let factoryInfo;
+    let paymasterInfo;
+    let aggregatorInfo;
+    
+    // Vechain Runs here
+    if (!errorResult?.errorName?.startsWith('ValidationResult')) {
+      const data = errorResult.error.error.data // Vechain only
+      
+      const val1 = data.substring(516, 522)
+      const val2 = data.substring(573,586)
+
+      // returnInfo = [
+      //   { type: 'BigNumber', hex: val1 },
+      //   { type: 'BigNumber', hex: val2 },
+      //   false,
+      //   0,
+      //   281474976710655,
+      //   '0x'
+      // ];
+
+      returnInfo = {
+        preOpGas: "0x"+val1,
+        preFund:  "0x"+val2,
+        sigFailed: false,
+        validAfter: 0,
+        validUntil: 281474976710655,
+        paymasterContext: '0x'
+      };
+
+      senderInfo = [
+        { type: 'BigNumber', hex: '0x00' },
+        { type: 'BigNumber', hex: '0x00' }
+      ];
+
+      factoryInfo = [
+        { type: 'BigNumber', hex: '0x00' },
+        { type: 'BigNumber', hex: '0x00' }
+      ];
+
+      paymasterInfo = [
+        { type: 'BigNumber', hex: '0x00' },
+        { type: 'BigNumber', hex: '0x00' }
+      ];
+    } else {
+      const data = errorResult.data; // Ethereum only
+  
+      ({
+        returnInfo,
+        senderInfo,
+        factoryInfo,
+        paymasterInfo,
+        aggregatorInfo // may be missing (exists only SimulationResultWithAggregator
+      } = errorResult.errorArgs);
     }
 
-    const {
-      returnInfo,
-      senderInfo,
-      factoryInfo,
-      paymasterInfo,
-      aggregatorInfo // may be missing (exists only SimulationResultWithAggregator
-    } = errorResult.errorArgs
+    // console.log(JSON.stringify(returnInfo))
+    // console.log(JSON.stringify(senderInfo))
+    // console.log(JSON.stringify(factoryInfo))
+    // console.log(JSON.stringify(paymasterInfo))
+    
+    
 
     // extract address from "data" (first 20 bytes)
     // add it as "addr" member to the "stakeinfo" struct

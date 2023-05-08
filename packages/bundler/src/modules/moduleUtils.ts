@@ -64,7 +64,7 @@ export function toBytes32 (b: BytesLike | number): string {
  */
 export async function runContractScript<T extends ContractFactory> (provider: Provider, c: T, ctrParams: Parameters<T['getDeployTransaction']>): Promise<Result> {
   const tx = c.getDeployTransaction(...ctrParams)
-  const ret = await provider.call(tx)
+  const ret = await provider.call(tx) // error response 
   const parsed = ContractFactory.getInterface(c.interface).parseError(ret)
   if (parsed == null) throw new Error('unable to parse script (error) response: ' + ret)
   return parsed.args

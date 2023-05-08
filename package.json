@@ -33,17 +33,28 @@
     "ci": "env ; yarn depcheck; yarn preprocess ; yarn lerna-test"
   },
   "dependencies": {
+    "@nomiclabs/hardhat-truffle5": "^2.0.7",
     "@typescript-eslint/eslint-plugin": "^5.33.0",
     "@typescript-eslint/parser": "^5.33.0",
+    "@vechain/connex-driver": "^2.0.12",
+    "@vechain/connex-framework": "^2.0.12",
+    "@vechain/hardhat-vechain": "^0.0.1",
+    "@vechain/hardhat-web3": "^0.0.1",
+    "@vechain/web3-providers-connex": "^1.0.0",
     "depcheck": "^1.4.3",
     "eslint": "^8.21.0",
     "eslint-config-standard-with-typescript": "^22.0.0",
     "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-n": "^15.2.4",
     "eslint-plugin-promise": "^6.0.0",
+    "ethers": "^5.7.2",
     "lerna": "^5.4.0",
+    "thor-devkit": "^2.0.7",
     "typescript": "^4.7.4",
     "webpack": "^5.74.0",
     "webpack-cli": "^4.10.0"
+  },
+  "devDependencies": {
+    "@nomiclabs/hardhat-web3": "^2.0.0"
   }
 }

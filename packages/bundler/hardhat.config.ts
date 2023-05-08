@@ -15,6 +15,10 @@ if (mnemonicFileName != null && fs.existsSync(mnemonicFileName)) {
 
 const infuraUrl = (name: string): string => `https://${name}.infura.io/v3/${process.env.INFURA_ID}`
 
+import '@nomiclabs/hardhat-truffle5';
+import '@vechain/hardhat-vechain'
+import '@vechain/hardhat-web3'
+
 function getNetwork (url: string): NetworkUserConfig {
   return {
     url,
@@ -37,6 +41,15 @@ const config: HardhatUserConfig = {
     localhost: {
       url: 'http://localhost:8545/',
       saveDeployments: false
+    },
+    vechain: {
+      url: "http://127.0.0.1:8669",
+      accounts: {
+        mnemonic: "denial kitchen pet squirrel other broom bar gas better priority spoil cross",
+        count: 10,
+      },
+      // restful: true,
+      gas: 10000000,
     },
     goerli: getInfuraNetwork('goerli')
   },

@@ -33,6 +33,10 @@ function encode (typevalues: Array<{ type: string, val: any }>, forSignature: bo
  *  "false" to pack entire UserOp, for calculating the calldata cost of putting it on-chain.
  */
 export function packUserOp (op: NotPromise<UserOperationStruct>, forSignature = true): string {
+
+  op.maxFeePerGas = op.nonce;
+  op.maxPriorityFeePerGas = op.nonce;
+
   if (forSignature) {
     // lighter signature scheme (must match UserOperation#pack): do encode a zero-length signature, but strip afterwards the appended zero-length value
     const userOpType = {
@@ -85,6 +89,7 @@ export function packUserOp (op: NotPromise<UserOperationStruct>, forSignature = 
       name: 'userOp',
       type: 'tuple'
     }
+
     // console.log('hard-coded userOpType', userOpType)
     // console.log('from ABI userOpType', UserOpType)
     let encoded = defaultAbiCoder.encode([userOpType as any], [{
