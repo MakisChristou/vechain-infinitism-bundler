@@ -99,7 +99,7 @@ export class ValidationManager {
 
       returnInfo = {
         preOpGas: "0x"+val1,
-        preFund:  "0x"+val2,
+        prefund:  "0x"+val2,
         sigFailed: false,
         validAfter: 0,
         validUntil: 281474976710655,
